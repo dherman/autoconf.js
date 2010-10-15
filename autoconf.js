@@ -23,7 +23,10 @@
 // - should not depend unnecessarily on mutable or deletable properties of standard libraries
 
 
-var autoconf = (function(global) {
+autoconf = (function(global) {
+
+    var dirty = 'autoconf' in global;
+    var previous = global.autoconf;
 
     var eval = global.eval;
     if (typeof eval !== 'function')
@@ -86,7 +89,14 @@ var autoconf = (function(global) {
         throw new Error("could not find a global function");
     }
 
-    return {
+    var self = {
+        restore: function() {
+            if (dirty)
+                global.autoconf = previous;
+            else
+                delete global.autoconf;
+            return self;
+        },
         setEval: function(f) { eval = f; },
         setFunction: function(f) { Function = f; },
 
@@ -108,7 +118,7 @@ var autoconf = (function(global) {
         supportsFinalObjectCommas: memo(function() {
             return canEval("({x:1,})");
         }),
-        supportsAnonymousFunctionDeclarations: memo(function() {
+        supportsAnonymousFunctionExpressionStatements: memo(function() {
             return canEval("function(){}");
         }),
         supportsIndirectEval: memo(function() {
@@ -123,37 +133,52 @@ var autoconf = (function(global) {
             return truthyEval("(function(" + name + "){var evil=eval;return typeof(evil('" + name + "'))==='function'})(0)");
         }),
         supportsConst: memo(function() {
-            return canEval("(function(){const x = 1;});");
+            return canEval("(function(){const x=1;});");
+        }),
+        constIsVar: memo(function() {
+            return truthyEval("(function(){const x=0; x=1; return x===1;})()");
         }),
         supportsWith: memo(function() {
             return canEval("with({}){}");
         }),
         supportsE4X: memo(function() {
-            return canEval("(function(){var x = <p></p>;});");
+            return canEval("(function(){var x=<p></p>;});");
         }),
         supportsE4XFunctionNamespace: memo(function() {
-            return canEval("(function(){function::foo; function foo(){}});");
+            return canEval("(function(){function::foo;function foo(){}});");
         }),
         argumentsIsMutable: memo(function() {
             return truthyEval("(function(){arguments=1;})()");
         }),
         argumentsAliases: memo(function() {
-            return truthyEval("(function(x) { arguments[0] = 1; return x === 1; })(0)");
+            return truthyEval("(function(x){arguments[0]=1;return x===1;})(0)");
         }),
         supportsAssigningArguments: memo(function() {
-            return canEval("(function() { arguments = 1; });");
+            return canEval("(function(){arguments=1;});");
         }),
         supportsDoWhileSemicolonInsertion: memo(function() {
-            return canEval("(function() { do; while(0) return; });");
+            return canEval("(function(){do;while(0)return;});");
         }),
         supportsGetters: memo(function() {
-            return canEval("({ get x() { } })");
+            return canEval("({get x(){}})");
         }),
         supportsSetters: memo(function() {
-            return canEval("({ set x(v) { } })");
+            return canEval("({set x(v){}})");
         }),
         supportsExpressionFunctions: memo(function() {
-            return canEval("(function() 42);");
+            return canEval("(function()0);");
+        }),
+        namedFunctionExpressionInfectsVariableObject: memo(function() {
+            return truthyCall(function() {
+                return (function() {
+                    var x = 0;
+                    return (function() {
+                        (function x() {})();
+                        return x;
+                    })();
+                })() !== 0;
+            });
         })
     };
+    return self;
 })(this);
