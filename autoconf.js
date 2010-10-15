@@ -23,18 +23,16 @@
 // - should not depend unnecessarily on mutable or deletable properties of standard libraries
 
 
-autoconf = (function(global) {
+this.autoconf = (function(global) {
 
     var dirty = 'autoconf' in global;
     var previous = global.autoconf;
 
-    var eval = global.eval;
-    if (typeof eval !== 'function')
-        eval = null;
-
-    function checkEval() {
+    function checkGlobals() {
         if (typeof eval !== 'function')
-            throw new Error("no 'eval' function found");
+            throw new Error("no global 'eval' function found");
+        if (typeof Object !== 'function')
+            throw new Error("no global 'Object' function found");
     }
 
     // wrap the thunk with a memoizing version
@@ -65,29 +63,17 @@ autoconf = (function(global) {
 
     // return true if eval returns, false if it throws
     function canEval(str) {
-        checkEval();
+        checkGlobals();
         return canCall(function() { eval(str) });
     }
 
     // return the result of eval or false if it throws
     function truthyEval(str) {
-        checkEval();
+        checkGlobals();
         return truthyCall(function() { return eval(str); });
     }
 
-    var GLOBAL_FUNCTIONS = [
-        "Array", "String", "Object", "Function", "Boolean", "Math", "RegExp", "Date",
-        "isFinite", "isNaN", "escape", "unescape", "encodeURI", "decodeURI"
-    ];
-
-    function findGlobalFunction() {
-        for (var i = 0; i < GLOBAL_FUNCTIONS.length; i++) {
-            var key = GLOBAL_FUNCTIONS[i];
-            if (typeof global[key] === 'function')
-                return key;
-        }
-        throw new Error("could not find a global function");
-    }
+    checkGlobals();
 
     var self = {
         restore: function() {
@@ -97,8 +83,6 @@ autoconf = (function(global) {
                 delete global.autoconf;
             return self;
         },
-        setEval: function(f) { eval = f; },
-        setFunction: function(f) { Function = f; },
 
         supportsLocalFunctions: memo(function() {
             return canEval("(function(){{function foo(){}}});");
@@ -122,21 +106,20 @@ autoconf = (function(global) {
             return canEval("function(){}");
         }),
         supportsIndirectEval: memo(function() {
-            checkEval();
+            checkGlobals();
             return canCall(function() {
                 var evil = eval;
                 evil('0');
             });
         }),
         indirectEvalIsGlobal: memo(function() {
-            var name = findGlobalFunction();
-            return truthyEval("(function(" + name + "){var evil=eval;return typeof(evil('" + name + "'))==='function'})(0)");
+            return truthyEval("(function(Object){var evil=eval;return typeof(evil('Object'))==='function'})(0)");
         }),
         supportsConst: memo(function() {
             return canEval("(function(){const x=1;});");
         }),
         constIsVar: memo(function() {
-            return truthyEval("(function(){const x=0; x=1; return x===1;})()");
+            return truthyEval("(function(){const x=0;x=1;return x===1;})()");
         }),
         supportsWith: memo(function() {
             return canEval("with({}){}");
