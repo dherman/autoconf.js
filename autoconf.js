@@ -18,8 +18,8 @@
 // Rules of a good autoconf test:
 // 
 // - should not create any global bindings
-// - should not depend on any global bindings except eval
-// - should call checkEval() at the last possible moment before referring to eval
+// - should not depend on any global bindings except eval or Object
+// - should call checkGlobals() at the last possible moment before referring to eval or Object
 // - should not depend unnecessarily on mutable or deletable properties of standard libraries
 
 
