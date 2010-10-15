@@ -178,6 +178,25 @@ autoconf = (function(global) {
                     })();
                 })() !== 0;
             });
+        }),
+        supportsProtoReflection: memo(function() {
+            return truthyCall(function() {
+                function C() { }
+                C.prototype = { };
+                var x = new C();
+                return x.__proto__ === C.prototype;
+            });
+        }),
+        supportsMutableProto: memo(function() {
+            return truthyCall(function() {
+                function C() { }
+                C.prototype = { foo: 0 };
+                function D() { }
+                D.prototype = { foo: 1 };
+                var x = new C();
+                x.__proto__ = D.prototype;
+                return x.foo === 1;
+            });
         })
     };
     return self;
