@@ -180,6 +180,11 @@ this.autoconf = (function(global) {
                 x.__proto__ = D.prototype;
                 return x.foo === 1;
             });
+        }),
+        protoInProtolessObject: memo(function() {
+            return truthyCall(function() {
+                return "__proto__" in {__proto__:null};
+            });
         })
     };
     return self;
